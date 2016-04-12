@@ -16,6 +16,9 @@ func NewWordModel() *WordModel {
 
 func (wm *WordModel) Add(word string) {
 	var previous rune
+	if len(word) == 0 {
+		return
+	}
 	wm.grow(len(word))
 	for ix, current := range word {
 		wm.hit(wm.structure[ix], current)
