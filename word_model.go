@@ -1,72 +1,90 @@
 package mot
 
-import (
-	"fmt"
+var (
+	zerune = '\000'
 )
 
-type node struct {
-	counter  int
-	children []*node
+type key struct {
+	position int
+	value    rune
 }
 
-func newNode() *node {
-	children := make([]*node, 0)
-	return &node{
-		counter:  0,
-		children: children,
+type node struct {
+	value    rune
+	counter  int
+	children map[rune]*node
+}
+
+type parentLocator func(int) int
+
+type chain struct {
+	data map[key]*node
+}
+
+func newChain() (c *chain) {
+	c = &chain{
+		make(map[key]*node),
 	}
+	c.put(-1, zerune)
+	return
+}
+
+func (c *chain) get(position int, value rune) (n *node) {
+	return c.data[key{position, value}]
+}
+
+func (c *chain) put(position int, value rune) (n *node) {
+	k := key{position, value}
+	if _, ok := c.data[k]; !ok {
+		c.data[k] = &node{
+			value,
+			0,
+			make(map[rune]*node),
+		}
+	}
+	n = c.data[k]
+	n.counter++
+	return
 }
 
 type WordModel struct {
-	structure []map[rune]*node
-	follows   map[rune]map[rune]*node
+	words    *chain
+	digraphs *chain
 }
 
 func NewWordModel() *WordModel {
-	structure := make([]map[rune]*node, 0)
-	follows := make(map[rune]map[rune]*node)
 	return &WordModel{
-		structure,
-		follows,
+		newChain(),
+		newChain(),
 	}
 }
 
 func (wm *WordModel) Add(word string) {
-	var previous rune
+	var parent rune
 	if len(word) == 0 {
 		return
 	}
-	wm.grow(len(word))
 	for ix, current := range word {
-		wm.hit(wm.structure[ix], current)
-		if previous != '\000' {
-			wm.hit(wm.follows[previous], current)
-		}
-		if _, ok := wm.follows[current]; !ok {
-			wm.follows[current] = make(map[rune]*node)
-		}
-		previous = current
+		wm.updateWords(ix, current, parent)
+		wm.updateDigraphs(ix, current, parent)
+		parent = current
 	}
-	wm.hit(wm.follows[previous], '\000')
-	fmt.Printf("%v\n", wm.structure)
-	fmt.Printf("%v\n", wm.follows)
 }
 
-func (wm *WordModel) grow(target int) {
-	required := target - len(wm.structure)
-	if required < 1 {
-		return
-	}
-	moreRoom := make([]map[rune]*node, required)
-	for ix := range moreRoom {
-		moreRoom[ix] = make(map[rune]*node)
-	}
-	wm.structure = append(wm.structure, moreRoom...)
+func (wm *WordModel) updateWords(position int, current, parent rune) {
+	c := wm.words
+	n := c.put(position, current)
+	p := c.get(position-1, parent)
+	p.children[current] = n
 }
 
-func (wm *WordModel) hit(data map[rune]*node, target rune) {
-	if _, ok := data[target]; !ok {
-		data[target] = newNode()
+func (wm *WordModel) updateDigraphs(position int, current, parent rune) {
+	c := wm.digraphs
+	n := c.put(0, current)
+	parentPosition := 0
+	if position == 0 {
+		parentPosition = -1
 	}
-	data[target].counter++
+	p := c.get(parentPosition, parent)
+	p.children[current] = n
 }
