@@ -28,5 +28,8 @@ func TestAdd(t *testing.T) {
 	if root == nil {
 		t.Errorf("root not found in wm.words")
 	}
-	// TODO treat digraph different, we should count only how many times after parent a rune appears.
+	for _, v := range wm.digraphs.data[key{0, 'l'}].children {
+		fmt.Printf("%c: %d\n", v.value, v.counter)
+	}
+	// TODO check if both childrens have 2 hits in their counters
 }

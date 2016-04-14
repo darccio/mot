@@ -15,7 +15,13 @@ type node struct {
 	children map[rune]*node
 }
 
-type parentLocator func(int) int
+func newNode(value rune) *node {
+	return &node{
+		value,
+		0,
+		make(map[rune]*node),
+	}
+}
 
 type chain struct {
 	data map[key]*node
@@ -25,26 +31,21 @@ func newChain() (c *chain) {
 	c = &chain{
 		make(map[key]*node),
 	}
-	c.put(-1, zerune)
+	root := c.put(-1, zerune)
+	root.counter++
 	return
 }
 
-func (c *chain) get(position int, value rune) (n *node) {
+func (c *chain) get(position int, value rune) *node {
 	return c.data[key{position, value}]
 }
 
-func (c *chain) put(position int, value rune) (n *node) {
+func (c *chain) put(position int, value rune) *node {
 	k := key{position, value}
 	if _, ok := c.data[k]; !ok {
-		c.data[k] = &node{
-			value,
-			0,
-			make(map[rune]*node),
-		}
+		c.data[k] = newNode(value)
 	}
-	n = c.data[k]
-	n.counter++
-	return
+	return c.data[k]
 }
 
 type WordModel struct {
@@ -74,17 +75,21 @@ func (wm *WordModel) Add(word string) {
 func (wm *WordModel) updateWords(position int, current, parent rune) {
 	c := wm.words
 	n := c.put(position, current)
+	n.counter++
 	p := c.get(position-1, parent)
 	p.children[current] = n
 }
 
 func (wm *WordModel) updateDigraphs(position int, current, parent rune) {
 	c := wm.digraphs
-	n := c.put(0, current)
+	c.put(0, current)
 	parentPosition := 0
 	if position == 0 {
 		parentPosition = -1
 	}
 	p := c.get(parentPosition, parent)
-	p.children[current] = n
+	if _, ok := p.children[current]; !ok {
+		p.children[current] = newNode(current)
+	}
+	p.children[current].counter++
 }
